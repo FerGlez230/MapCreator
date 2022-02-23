@@ -79,9 +79,6 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
     //GET THE CURRENT LOCATION
     private FusedLocationProviderClient fusedLocationClient;
-    private LocationManager locationManager;
-    private LocationRequest locationRequest;
-    private LocationCallback locationCallback;
     private  Location currentLocation;
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
     private GLSurfaceView surfaceView;
@@ -95,7 +92,6 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
     private DisplayRotationHelper displayRotationHelper;
     private TrackingStateHelper trackingStateHelper;
     private TapHelper tapHelper;
-    private final StorageManager storageManager = new StorageManager();
     private BDRequest bdRequest = new BDRequest(getContext());
     private final BackgroundRenderer backgroundRenderer = new BackgroundRenderer();
     private final ObjectRenderer virtualObject = new ObjectRenderer();
