@@ -1,6 +1,13 @@
 package com.example.mapcreator;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
@@ -10,14 +17,27 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 
+import com.example.mapcreator.controllers.BDController;
+import com.example.mapcreator.controllers.BDRequest;
 import com.example.mapcreator.helpers.CloudAnchorManager;
 import com.example.mapcreator.helpers.SnackbarHelper;
 import  com.example.mapcreator.helpers.*;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationAvailability;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.CancellationToken;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.OnTokenCanceledListener;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.ArCoreApk;
 import com.google.ar.core.Camera;
@@ -39,10 +59,14 @@ import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import com.example.mapcreator.models.AnchorStorageObject;
+
+import static android.content.Context.LOCATION_SERVICE;
 
 /**
  * Main Fragment for the Cloud Anchors Codelab.
@@ -53,11 +77,18 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
     private static final String TAG = CloudAnchorFragment.class.getSimpleName();
 
+    //GET THE CURRENT LOCATION
+    private FusedLocationProviderClient fusedLocationClient;
+    private LocationManager locationManager;
+    private LocationRequest locationRequest;
+    private LocationCallback locationCallback;
+    private  Location currentLocation;
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
     private GLSurfaceView surfaceView;
-    private int totalAnchors=0;
+    private long totalAnchors=0;
     private boolean installRequested;
     private Button resolveButton;
+    private EditText description;
     private Session session;
     private final SnackbarHelper messageSnackbarHelper = new SnackbarHelper();
     private final CloudAnchorManager cloudAnchorManager = new CloudAnchorManager();
@@ -65,7 +96,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
     private TrackingStateHelper trackingStateHelper;
     private TapHelper tapHelper;
     private final StorageManager storageManager = new StorageManager();
-
+    private BDRequest bdRequest = new BDRequest(getContext());
     private final BackgroundRenderer backgroundRenderer = new BackgroundRenderer();
     private final ObjectRenderer virtualObject = new ObjectRenderer();
     private final ObjectRenderer virtualObjectShadow = new ObjectRenderer();
@@ -92,6 +123,8 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
             LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         // Inflate from the Layout XML file.
         View rootView = inflater.inflate(R.layout.fragment_cloud_anchor, container, false);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(getContext());
+        getLocation();
         GLSurfaceView surfaceView = rootView.findViewById(R.id.surfaceView);
         this.surfaceView = surfaceView;
         displayRotationHelper = new DisplayRotationHelper(requireContext());
@@ -106,9 +139,11 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
         Button clearButton = rootView.findViewById(R.id.clear_button);
         clearButton.setOnClickListener(v -> onClearButtonPressed());
-
+        description = rootView.findViewById(R.id.description_edit_text);
         resolveButton = rootView.findViewById(R.id.resolve_button);
         resolveButton.setOnClickListener(v -> onResolveButtonPressed());
+
+
         return rootView;
     }
 
@@ -133,6 +168,13 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                 if (!CameraPermissionHelper.hasCameraPermission(requireActivity())) {
                     CameraPermissionHelper.requestCameraPermission(requireActivity());
                     return;
+                }
+                //ASK FOR LOCATION PERMISSION
+                if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                        && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                            100);
+
                 }
 
                 // Create the session.
@@ -356,6 +398,8 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                     // space. This anchor is created on the Plane to place the 3D model
                     // in the correct position relative both to the world and to the plane.
                     currentAnchor = hit.createAnchor();
+
+
                     // Add these lines right below:
                     getActivity().runOnUiThread(() -> resolveButton.setEnabled(false));
                     messageSnackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
@@ -366,9 +410,10 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
         }
     }
     private synchronized void onResolveButtonPressed() {
-        ResolveDialogFragment dialog = ResolveDialogFragment.createWithOkListener(
-                this::onShortCodeEntered);
-        dialog.show(getActivity().getSupportFragmentManager(), "Resolve");
+        //ResolveDialogFragment dialog = ResolveDialogFragment.createWithOkListener(
+          //      this::onShortCodeEntered);
+        //dialog.show(getActivity().getSupportFragmentManager(), "Resolve");
+        onShortCodeEntered();
     }
     /**
      * Checks if we detected at least one plane.
@@ -399,52 +444,78 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
       }
     }*/
     private synchronized void onHostedAnchorAvailable(Anchor anchor) {
+
         Anchor.CloudAnchorState cloudState = anchor.getCloudAnchorState();
         if (cloudState == Anchor.CloudAnchorState.SUCCESS) {
-            int shortCode = storageManager.nextShortCode(getActivity());
-            AnchorStorageObject anchorStorageObject= new AnchorStorageObject();
-            anchorStorageObject.setShortCode(shortCode);
-
-            // AddAnchorDialogFragment dialog = AddAnchorDialogFragment.createWithOkListener(
-            //       this::onDescriptionEntered(anchorStorageObject));
-            //dialog.show(getActivity().getSupportFragmentManager(), "Resolve");
-
-
-
-            storageManager.storeUsingShortCode(getActivity(), shortCode, anchor.getCloudAnchorId());
-            messageSnackbarHelper.showMessage(
-                    getActivity(), "Cloud Anchor Hosted. Short code: " + shortCode);
-            totalAnchors=shortCode;
             currentAnchor = anchor;
+            if(!description.getText().toString().isEmpty()){
+                do{
+                    getLocation();
+
+                    messageSnackbarHelper.showMessage(getActivity(), "Location is null");
+
+                } while(currentLocation == null);
+                BDController admin;
+                admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
+                totalAnchors = bdRequest.addAnchorOnBD(new AnchorStorageObject(
+                        currentAnchor.getCloudAnchorId(),
+                        description.getText().toString(),
+                        currentLocation.getLatitude(),
+                        currentLocation.getLongitude()), admin);
+
+                messageSnackbarHelper.showMessage(
+                        getActivity(), "Cloud Anchor Hosted. Short code: " + totalAnchors
+                                + "\n lat" + currentLocation.getLatitude()
+                                + "\n long" + currentLocation.getLongitude()
+                                + "\n total anchors" + totalAnchors);
+
+            }else {
+                messageSnackbarHelper.showMessage(getActivity(), "Enter a description" );
+            }
+
         } else {
             messageSnackbarHelper.showMessage(getActivity(), "Error while hosting: " + cloudState.toString());
         }
-    }private synchronized void onDescriptionEntered(String description, AnchorStorageObject anchor) {
-        anchor.setDescription(description);
     }
-    private synchronized void onShortCodeEntered(String shortCode) {
-        int parsedCode= Integer.parseInt(shortCode);
-        String cloudAnchorId = "";
-        for(int code=1; code<=totalAnchors; code++){
-            cloudAnchorId = storageManager.getCloudAnchorId(getActivity(), parsedCode);
-            if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
-                messageSnackbarHelper.showMessage(
-                        getActivity(),
-                        "A Cloud Anchor ID for the short code " + code + " was not found.");
-                return;
-            }
-            resolveButton.setEnabled(false);
-            cloudAnchorManager.resolveCloudAnchor(
-                    session,
-                    cloudAnchorId,
-                    anchor -> onResolvedAnchorAvailable(anchor, parsedCode));
-        }
 
+
+    private synchronized void onShortCodeEntered() {
+        String cloudAnchorId = "";
+        BDController admin;
+        admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
+        SQLiteDatabase bd=admin.getReadableDatabase();
+        Cursor anchorsRows=bd.rawQuery("select * from anchors", null);
+        int total=anchorsRows.getCount();
+        if(anchorsRows != null){
+           anchorsRows.moveToFirst();
+                while(anchorsRows.isAfterLast() == false) {
+                    cloudAnchorId = anchorsRows.getString(1); //GET THE ID FOR THE CURRENT ANCHOR (not short code)
+                    if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
+                        messageSnackbarHelper.showMessage(
+                                getActivity(),
+                                "A Cloud Anchor ID for the short code " + anchorsRows.getInt(0) + " was not found.");
+                        return;
+                    }
+                    resolveButton.setEnabled(false);
+                    cloudAnchorManager.resolveCloudAnchor(
+                            session,
+                            cloudAnchorId,
+                            anchor -> onResolvedAnchorAvailable(anchor, anchorsRows.getInt(0)));
+                    anchorsRows.moveToNext();
+
+            }
+
+        }else {
+            messageSnackbarHelper.showMessage(getActivity(),"No data to display");
+        }
+        anchorsRows.close();
     }
 
     private synchronized void onResolvedAnchorAvailable(Anchor anchor, int shortCode) {
         Anchor.CloudAnchorState cloudState = anchor.getCloudAnchorState();
+
         if (cloudState == Anchor.CloudAnchorState.SUCCESS) {
+
             messageSnackbarHelper.showMessage(getActivity(), "Cloud Anchor Resolved. Short code: " + shortCode +'\n'+ anchor.toString());
             Log.i("hola", anchor.toString());
             currentAnchor = anchor;
@@ -456,4 +527,18 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
             resolveButton.setEnabled(true);
         }
     }
+
+    private void getLocation() {
+        if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    1000);
+
+        } else {
+
+                fusedLocationClient.getLastLocation().addOnSuccessListener(location -> currentLocation = location);
+
+        }
+    }
+
 }
