@@ -353,16 +353,6 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                     virtualObjectShadow.draw(viewmtx, projmtx, colorCorrectionRgba, andyColor);
                 }
             });
-      /*
-      if (currentAnchor != null && currentAnchor.getTrackingState() == TrackingState.TRACKING) {
-        currentAnchor.getPose().toMatrix(anchorMatrix, 0);
-        // Update and draw the model and its shadow.
-        virtualObject.updateModelMatrix(anchorMatrix, 1f);
-        virtualObjectShadow.updateModelMatrix(anchorMatrix, 1f);
-
-        virtualObject.draw(viewmtx, projmtx, colorCorrectionRgba, andyColor);
-        virtualObjectShadow.draw(viewmtx, projmtx, colorCorrectionRgba, andyColor);
-      }*/
         } catch (Throwable t) {
             // Avoid crashing the application due to unhandled exceptions.
             Log.e(TAG, "Exception on the OpenGL thread", t);
@@ -371,7 +361,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
     // Handle only one tap per frame, as taps are usually low frequency compared to frame rate.
     private void handleTap(Frame frame, Camera camera) {
-        //DESCOMENTAR EN CASO DE SER NESARIO
+        //Uncomment if necesary
    /* if (currentAnchor != null) {
       return; // Do nothing if there was already an anchor.
     }*/
@@ -406,10 +396,34 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
         }
     }
     private synchronized void onResolveButtonPressed() {
-        //ResolveDialogFragment dialog = ResolveDialogFragment.createWithOkListener(
-          //      this::onShortCodeEntered);
-        //dialog.show(getActivity().getSupportFragmentManager(), "Resolve");
-        onShortCodeEntered();
+        String cloudAnchorId = "";
+        BDController admin;
+        admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
+        SQLiteDatabase bd=admin.getReadableDatabase();
+        Cursor anchorsRows=bd.rawQuery("select * from anchors", null);
+        int total=anchorsRows.getCount();
+        messageSnackbarHelper.showMessage(getActivity(),"Total anchors" + total);
+        if(anchorsRows != null){
+            for (int i = 0; i < total ; i++) {
+                anchorsRows.moveToNext();
+                cloudAnchorId = anchorsRows.getString(1); //GET THE ID FOR THE CURRENT ANCHOR (not short code)
+                if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
+                    messageSnackbarHelper.showMessage(
+                            getActivity(),
+                            "A Cloud Anchor ID for the short code " + anchorsRows.getInt(0) + " was not found.");
+                    return;
+                }
+                resolveButton.setEnabled(false);
+                cloudAnchorManager.resolveCloudAnchor(
+                        session,
+                        cloudAnchorId,
+                        anchor -> onResolvedAnchorAvailable(anchor, anchorsRows.getInt(0)));
+            }
+        }else {
+            messageSnackbarHelper.showMessage(getActivity(),"No data to display");
+        }
+        anchorsRows.close();
+        bd.close();
     }
     /**
      * Checks if we detected at least one plane.
@@ -429,16 +443,6 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
         resolveButton.setEnabled(true);
         currentAnchor = null;
     }
-    /*private synchronized void onHostedAnchorAvailable(Anchor anchor) {
-      Anchor.CloudAnchorState cloudState = anchor.getCloudAnchorState();
-      if (cloudState == Anchor.CloudAnchorState.SUCCESS) {
-        messageSnackbarHelper.showMessage(
-                getActivity(), "Cloud Anchor Hosted. ID: " + anchor.getCloudAnchorId());
-        currentAnchor = anchor;
-      } else {
-        messageSnackbarHelper.showMessage(getActivity(), "Error while hosting: " + cloudState.toString());
-      }
-    }*/
     private synchronized void onHostedAnchorAvailable(Anchor anchor) {
 
         Anchor.CloudAnchorState cloudState = anchor.getCloudAnchorState();
@@ -454,6 +458,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                 BDController admin;
                 admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
                 totalAnchors = bdRequest.addAnchorOnBD(new AnchorStorageObject(
+
                         currentAnchor.getCloudAnchorId(),
                         description.getText().toString(),
                         currentLocation.getLatitude(),
@@ -473,40 +478,6 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
             messageSnackbarHelper.showMessage(getActivity(), "Error while hosting: " + cloudState.toString());
         }
     }
-
-
-    private synchronized void onShortCodeEntered() {
-        String cloudAnchorId = "";
-        BDController admin;
-        admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
-        SQLiteDatabase bd=admin.getReadableDatabase();
-        Cursor anchorsRows=bd.rawQuery("select * from anchors", null);
-        int total=anchorsRows.getCount();
-        if(anchorsRows != null){
-           anchorsRows.moveToFirst();
-                while(anchorsRows.isAfterLast() == false) {
-                    cloudAnchorId = anchorsRows.getString(1); //GET THE ID FOR THE CURRENT ANCHOR (not short code)
-                    if (cloudAnchorId == null || cloudAnchorId.isEmpty()) {
-                        messageSnackbarHelper.showMessage(
-                                getActivity(),
-                                "A Cloud Anchor ID for the short code " + anchorsRows.getInt(0) + " was not found.");
-                        return;
-                    }
-                    resolveButton.setEnabled(false);
-                    cloudAnchorManager.resolveCloudAnchor(
-                            session,
-                            cloudAnchorId,
-                            anchor -> onResolvedAnchorAvailable(anchor, anchorsRows.getInt(0)));
-                    anchorsRows.moveToNext();
-
-            }
-
-        }else {
-            messageSnackbarHelper.showMessage(getActivity(),"No data to display");
-        }
-        anchorsRows.close();
-    }
-
     private synchronized void onResolvedAnchorAvailable(Anchor anchor, int shortCode) {
         Anchor.CloudAnchorState cloudState = anchor.getCloudAnchorState();
 

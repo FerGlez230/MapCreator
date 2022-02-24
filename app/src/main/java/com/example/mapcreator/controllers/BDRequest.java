@@ -16,9 +16,6 @@ public class BDRequest {
         admin=new BDController(context, "cetiColomosAR.db", null, 1);
     }
 
-    public BDController getAdmin() {
-        return admin;
-    }
 
     public long addAnchorOnBD(AnchorStorageObject anchor, BDController admin) {
         long id = -1;

@@ -9,7 +9,8 @@ public class AnchorStorageObject {
     public AnchorStorageObject() {
     }
 
-    public AnchorStorageObject( String idAnchor, String description, double latitude, double longitude) {
+    public AnchorStorageObject(String idAnchor, String description, double latitude, double longitude) {
+
         this.idAnchor = idAnchor;
         this.description = description;
         this.latitude = latitude;
