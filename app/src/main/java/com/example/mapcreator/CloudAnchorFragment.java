@@ -365,34 +365,37 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
    /* if (currentAnchor != null) {
       return; // Do nothing if there was already an anchor.
     }*/
+        if(!description.getText().toString().isEmpty()) {
+            MotionEvent tap = tapHelper.poll();
+            if (tap != null && camera.getTrackingState() == TrackingState.TRACKING) {
+                for (HitResult hit : frame.hitTest(tap)) {
+                    // Check if any plane was hit, and if it was hit inside the plane polygon
+                    Trackable trackable = hit.getTrackable();
+                    // Creates an anchor if a plane or an oriented point was hit.
+                    if ((trackable instanceof Plane
+                            && ((Plane) trackable).isPoseInPolygon(hit.getHitPose())
+                            && (PlaneRenderer.calculateDistanceToPlane(hit.getHitPose(), camera.getPose()) > 0))
+                            || (trackable instanceof Point
+                            && ((Point) trackable).getOrientationMode()
+                            == OrientationMode.ESTIMATED_SURFACE_NORMAL)) {
+                        // Hits are sorted by depth. Consider only closest hit on a plane or oriented point.
 
-        MotionEvent tap = tapHelper.poll();
-        if (tap != null && camera.getTrackingState() == TrackingState.TRACKING) {
-            for (HitResult hit : frame.hitTest(tap)) {
-                // Check if any plane was hit, and if it was hit inside the plane polygon
-                Trackable trackable = hit.getTrackable();
-                // Creates an anchor if a plane or an oriented point was hit.
-                if ((trackable instanceof Plane
-                        && ((Plane) trackable).isPoseInPolygon(hit.getHitPose())
-                        && (PlaneRenderer.calculateDistanceToPlane(hit.getHitPose(), camera.getPose()) > 0))
-                        || (trackable instanceof Point
-                        && ((Point) trackable).getOrientationMode()
-                        == OrientationMode.ESTIMATED_SURFACE_NORMAL)) {
-                    // Hits are sorted by depth. Consider only closest hit on a plane or oriented point.
-
-                    // Adding an Anchor tells ARCore that it should track this position in
-                    // space. This anchor is created on the Plane to place the 3D model
-                    // in the correct position relative both to the world and to the plane.
-                    currentAnchor = hit.createAnchor();
+                        // Adding an Anchor tells ARCore that it should track this position in
+                        // space. This anchor is created on the Plane to place the 3D model
+                        // in the correct position relative both to the world and to the plane.
+                        currentAnchor = hit.createAnchor();
 
 
-                    // Add these lines right below:
-                    getActivity().runOnUiThread(() -> resolveButton.setEnabled(false));
-                    messageSnackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
-                    cloudAnchorManager.hostCloudAnchor(session, currentAnchor, /* ttl= */ 300, this::onHostedAnchorAvailable);
-                    break;
+                        // Add these lines right below:
+                        getActivity().runOnUiThread(() -> resolveButton.setEnabled(false));
+                        messageSnackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
+                        cloudAnchorManager.hostCloudAnchor(session, currentAnchor, /* ttl= */ 300, this::onHostedAnchorAvailable);
+                        break;
+                    }
                 }
             }
+        }else {
+            messageSnackbarHelper.showMessage(getActivity(), "Enter a description" );
         }
     }
     private synchronized void onResolveButtonPressed() {
@@ -414,10 +417,11 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                     return;
                 }
                 resolveButton.setEnabled(false);
+                int shortCode = anchorsRows.getInt(0);
                 cloudAnchorManager.resolveCloudAnchor(
                         session,
                         cloudAnchorId,
-                        anchor -> onResolvedAnchorAvailable(anchor, anchorsRows.getInt(0)));
+                        anchor -> onResolvedAnchorAvailable(anchor, shortCode));
             }
         }else {
             messageSnackbarHelper.showMessage(getActivity(),"No data to display");
@@ -448,31 +452,29 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
         Anchor.CloudAnchorState cloudState = anchor.getCloudAnchorState();
         if (cloudState == Anchor.CloudAnchorState.SUCCESS) {
             currentAnchor = anchor;
-            if(!description.getText().toString().isEmpty()){
-                do{
-                    getLocation();
 
-                    messageSnackbarHelper.showMessage(getActivity(), "Location is null");
+            do{
+                getLocation();
 
-                } while(currentLocation == null);
-                BDController admin;
-                admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
-                totalAnchors = bdRequest.addAnchorOnBD(new AnchorStorageObject(
+                messageSnackbarHelper.showMessage(getActivity(), "Location is null");
 
-                        currentAnchor.getCloudAnchorId(),
-                        description.getText().toString(),
-                        currentLocation.getLatitude(),
-                        currentLocation.getLongitude()), admin);
+            } while(currentLocation == null);
+            BDController admin;
+            admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
+            totalAnchors = bdRequest.addAnchorOnBD(new AnchorStorageObject(
 
-                messageSnackbarHelper.showMessage(
-                        getActivity(), "Cloud Anchor Hosted. Short code: " + totalAnchors
-                                + "\n lat" + currentLocation.getLatitude()
-                                + "\n long" + currentLocation.getLongitude()
-                                + "\n total anchors" + totalAnchors);
+                    currentAnchor.getCloudAnchorId(),
+                    description.getText().toString(),
+                    currentLocation.getLatitude(),
+                    currentLocation.getLongitude()), admin);
 
-            }else {
-                messageSnackbarHelper.showMessage(getActivity(), "Enter a description" );
-            }
+            messageSnackbarHelper.showMessage(
+                    getActivity(), "Cloud Anchor Hosted. Short code: " + totalAnchors
+                            + "\n lat" + currentLocation.getLatitude()
+                            + "\n long" + currentLocation.getLongitude()
+                            + "\n total anchors" + totalAnchors);
+
+
 
         } else {
             messageSnackbarHelper.showMessage(getActivity(), "Error while hosting: " + cloudState.toString());
