@@ -3,16 +3,15 @@ package com.example.mapcreator.models;
 public class AnchorStorageObject {
     private int shortCode;
     private String idAnchor;
-    private String description;
     private double latitude;
     private double longitude;
     public AnchorStorageObject() {
     }
 
-    public AnchorStorageObject(String idAnchor, String description, double latitude, double longitude) {
+    public AnchorStorageObject(int shortCode, String idAnchor, double latitude, double longitude) {
 
         this.idAnchor = idAnchor;
-        this.description = description;
+        this.shortCode = shortCode;
         this.latitude = latitude;
         this.longitude = longitude;
     }
@@ -40,11 +39,5 @@ public class AnchorStorageObject {
         this.idAnchor = idAnchor;
     }
 
-    public String getDescription() {
-        return description;
-    }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
 }

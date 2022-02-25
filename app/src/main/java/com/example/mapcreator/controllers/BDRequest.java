@@ -21,8 +21,8 @@ public class BDRequest {
         long id = -1;
         SQLiteDatabase bd = admin.getWritableDatabase();
         ContentValues newAnchor = new ContentValues();
+        newAnchor.put("shortCode", anchor.getShortCode());
         newAnchor.put("id", anchor.getIdAnchor());
-        newAnchor.put("description", anchor.getDescription());
         newAnchor.put("latitude", anchor.getLatitude());
         newAnchor.put("longitude", anchor.getLongitude());
         if (bd != null) {

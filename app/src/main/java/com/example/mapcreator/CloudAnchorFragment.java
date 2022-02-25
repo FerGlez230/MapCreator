@@ -85,7 +85,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
     private long totalAnchors=0;
     private boolean installRequested;
     private Button resolveButton;
-    private EditText description;
+    private EditText shortCodeEdit;
     private Session session;
     private final SnackbarHelper messageSnackbarHelper = new SnackbarHelper();
     private final CloudAnchorManager cloudAnchorManager = new CloudAnchorManager();
@@ -135,7 +135,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
         Button clearButton = rootView.findViewById(R.id.clear_button);
         clearButton.setOnClickListener(v -> onClearButtonPressed());
-        description = rootView.findViewById(R.id.description_edit_text);
+        shortCodeEdit = rootView.findViewById(R.id.shortCode_edit_text);
         resolveButton = rootView.findViewById(R.id.resolve_button);
         resolveButton.setOnClickListener(v -> onResolveButtonPressed());
 
@@ -361,11 +361,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
     // Handle only one tap per frame, as taps are usually low frequency compared to frame rate.
     private void handleTap(Frame frame, Camera camera) {
-        //Uncomment if necesary
-   /* if (currentAnchor != null) {
-      return; // Do nothing if there was already an anchor.
-    }*/
-        if(!description.getText().toString().isEmpty()) {
+        if(!shortCodeEdit.getText().toString().isEmpty()) {
             MotionEvent tap = tapHelper.poll();
             if (tap != null && camera.getTrackingState() == TrackingState.TRACKING) {
                 for (HitResult hit : frame.hitTest(tap)) {
@@ -385,8 +381,6 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                         // in the correct position relative both to the world and to the plane.
                         currentAnchor = hit.createAnchor();
 
-
-                        // Add these lines right below:
                         getActivity().runOnUiThread(() -> resolveButton.setEnabled(false));
                         messageSnackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
                         cloudAnchorManager.hostCloudAnchor(session, currentAnchor, /* ttl= */ 300, this::onHostedAnchorAvailable);
@@ -395,7 +389,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                 }
             }
         }else {
-            messageSnackbarHelper.showMessage(getActivity(), "Enter a description" );
+            messageSnackbarHelper.showMessage(getActivity(), "Enter short code" );
         }
     }
     private synchronized void onResolveButtonPressed() {
@@ -462,9 +456,8 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
             BDController admin;
             admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
             totalAnchors = bdRequest.addAnchorOnBD(new AnchorStorageObject(
-
+                    Integer.parseInt(shortCodeEdit.getText().toString()),
                     currentAnchor.getCloudAnchorId(),
-                    description.getText().toString(),
                     currentLocation.getLatitude(),
                     currentLocation.getLongitude()), admin);
 
