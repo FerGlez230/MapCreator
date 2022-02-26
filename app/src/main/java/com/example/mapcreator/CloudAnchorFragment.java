@@ -1,7 +1,9 @@
 package com.example.mapcreator;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -22,6 +24,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 
 import com.example.mapcreator.controllers.BDController;
@@ -84,7 +87,7 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
     private GLSurfaceView surfaceView;
     private long totalAnchors=0;
     private boolean installRequested;
-    private Button resolveButton;
+    private Button resolveButton, listButton;
     private EditText shortCodeEdit;
     private Session session;
     private final SnackbarHelper messageSnackbarHelper = new SnackbarHelper();
@@ -137,6 +140,8 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
         clearButton.setOnClickListener(v -> onClearButtonPressed());
         shortCodeEdit = rootView.findViewById(R.id.shortCode_edit_text);
         resolveButton = rootView.findViewById(R.id.resolve_button);
+        listButton = rootView.findViewById(R.id.list_button);
+        listButton.setOnClickListener( v -> listAnchors() );
         resolveButton.setOnClickListener(v -> onResolveButtonPressed());
 
 
@@ -502,5 +507,39 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
         }
     }
+    public void listAnchors() {
+        String shortCodes ="";
+        BDController admin;
+        admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
+        SQLiteDatabase bd=admin.getReadableDatabase();
+        Cursor anchorsRows=bd.rawQuery("select shortCode from anchors", null);
 
+        int total=anchorsRows.getCount();
+        if(anchorsRows != null){
+            for (int i = 0; i < total ; i++) {
+                anchorsRows.moveToNext();
+                shortCodes += anchorsRows.getString(0) + ",  "; //GET THE ID FOR THE CURRENT ANCHOR (not short code)
+            }
+
+
+        }else {
+            messageSnackbarHelper.showMessage(getActivity(),"No data to display");
+        }
+        anchorsRows.close();
+        bd.close();
+        messageSnackbarHelper.showMessage(getActivity(),
+                shortCodes);
+
+        /*AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+        builder.setTitle("Titulo")
+                .setMessage(shortCodes)
+                .setPositiveButton("OK", null);
+        return builder.create();*/
+        new AlertDialog.Builder(getActivity())
+                .setTitle("Codes")
+                .setMessage(shortCodes)
+                .setPositiveButton("Ok", null)
+                .show();
+    }
 }

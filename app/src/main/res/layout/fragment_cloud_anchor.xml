@@ -9,9 +9,13 @@
         android:layout_height="match_parent"
         android:orientation="horizontal"
         android:id="@+id/surfaceView" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="horizontal">
             <Button
                 android:text="CLEAR"
@@ -23,11 +27,22 @@
                 android:id="@+id/resolve_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"/>
-            <EditText
-                android:id="@+id/shortCode_edit_text"
-                android:hint="Add short code"
-                android:inputType="number"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"></EditText>
+            <Button
+                android:text="LIST"
+                android:id="@+id/list_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
         </LinearLayout>
+
+        <EditText
+            android:id="@+id/shortCode_edit_text"
+            android:hint="Add short code"
+            android:inputType="number"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"></EditText>
+
+
+    </LinearLayout>
+
 </FrameLayout>
