@@ -366,7 +366,6 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
 
     // Handle only one tap per frame, as taps are usually low frequency compared to frame rate.
     private void handleTap(Frame frame, Camera camera) {
-        if(!shortCodeEdit.getText().toString().isEmpty()) {
             MotionEvent tap = tapHelper.poll();
             if (tap != null && camera.getTrackingState() == TrackingState.TRACKING) {
                 for (HitResult hit : frame.hitTest(tap)) {
@@ -379,23 +378,24 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
                             || (trackable instanceof Point
                             && ((Point) trackable).getOrientationMode()
                             == OrientationMode.ESTIMATED_SURFACE_NORMAL)) {
-                        // Hits are sorted by depth. Consider only closest hit on a plane or oriented point.
+                        if(!shortCodeEdit.getText().toString().isEmpty()) {
+                            // Hits are sorted by depth. Consider only closest hit on a plane or oriented point.
 
-                        // Adding an Anchor tells ARCore that it should track this position in
-                        // space. This anchor is created on the Plane to place the 3D model
-                        // in the correct position relative both to the world and to the plane.
-                        currentAnchor = hit.createAnchor();
+                            // Adding an Anchor tells ARCore that it should track this position in
+                            // space. This anchor is created on the Plane to place the 3D model
+                            // in the correct position relative both to the world and to the plane.
+                            currentAnchor = hit.createAnchor();
 
-                        getActivity().runOnUiThread(() -> resolveButton.setEnabled(false));
-                        messageSnackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
-                        cloudAnchorManager.hostCloudAnchor(session, currentAnchor, /* ttl= */ 300, this::onHostedAnchorAvailable);
-                        break;
+                            getActivity().runOnUiThread(() -> resolveButton.setEnabled(false));
+                            messageSnackbarHelper.showMessage(getActivity(), "Now hosting anchor...");
+                            cloudAnchorManager.hostCloudAnchor(session, currentAnchor, /* ttl= */ 300, this::onHostedAnchorAvailable);
+                            break;
+                        }else {
+                            messageSnackbarHelper.showMessage(getActivity(), "Enter short code" );
+                        }
                     }
                 }
             }
-        }else {
-            messageSnackbarHelper.showMessage(getActivity(), "Enter short code" );
-        }
     }
     private synchronized void onResolveButtonPressed() {
         String cloudAnchorId = "";
