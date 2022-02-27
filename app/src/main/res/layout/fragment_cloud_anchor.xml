@@ -38,7 +38,7 @@
         <EditText
             android:id="@+id/shortCode_edit_text"
             android:hint="Add short code"
-            android:inputType="number"
+            android:inputType="text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"></EditText>
 

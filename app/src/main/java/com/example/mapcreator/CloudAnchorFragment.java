@@ -32,6 +32,7 @@ import com.example.mapcreator.controllers.BDRequest;
 import com.example.mapcreator.helpers.CloudAnchorManager;
 import com.example.mapcreator.helpers.SnackbarHelper;
 import  com.example.mapcreator.helpers.*;
+
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationCallback;
@@ -461,13 +462,13 @@ public class CloudAnchorFragment extends Fragment implements GLSurfaceView.Rende
             BDController admin;
             admin=new BDController(getContext(), "cetiColomosAR.db", null, 1);
             totalAnchors = bdRequest.addAnchorOnBD(new AnchorStorageObject(
-                    Integer.parseInt(shortCodeEdit.getText().toString()),
+                    shortCodeEdit.getText().toString(),
                     currentAnchor.getCloudAnchorId(),
                     currentLocation.getLatitude(),
                     currentLocation.getLongitude()), admin);
 
             messageSnackbarHelper.showMessage(
-                    getActivity(), "Cloud Anchor Hosted. Short code: " + totalAnchors
+                    getActivity(), "Cloud Anchor Hosted. Short code: " + shortCodeEdit.getText().toString()
                             + "\n lat" + currentLocation.getLatitude()
                             + "\n long" + currentLocation.getLongitude()
                             + "\n total anchors" + totalAnchors);

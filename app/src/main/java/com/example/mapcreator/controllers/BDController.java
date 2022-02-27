@@ -16,7 +16,7 @@ public class BDController extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        String sql="create table anchors(shortCode integer primary key , id text,  latitude double, longitude double)";
+        String sql="create table anchors(shortCode text primary key , id text,  latitude double, longitude double)";
         try{db.execSQL(sql);}
         catch (SQLException e){
             Log.e("HELPME", "Error"+e.getMessage());
